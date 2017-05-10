@@ -15,11 +15,11 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
+    Port = config:get_listen_client_port(),
     {ok, _} = ranch:start_listener(gate_way, 100,
-        ranch_tcp, [{port, 5555}],
+        ranch_tcp, [{port, Port}],
         gate_protocol, []
         ).
-%%     gate_way_sup:start_link().
 
 %%--------------------------------------------------------------------
 stop(_State) ->
