@@ -15,8 +15,6 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    lager:start(),
-    ok = application:start(ranch),
     {ok, _} = ranch:start_listener(gate_way, 100,
         ranch_tcp, [{port, 5555}],
         gate_protocol, []

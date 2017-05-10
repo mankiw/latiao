@@ -5,7 +5,9 @@
   {mod, { gate_way_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    ranch,
+    lager
    ]},
   {env,[]},
   {modules, []},
