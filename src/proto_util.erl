@@ -28,14 +28,10 @@ pack_server_proto(Seq, Packet) ->
         RoleID ->
             RoleID
     end,
-    io:format("RoleID is ~p, seq is ~p, Packet is ~p~n", [RoleID, Seq, Packet]),
     Packet1 = <<Seq:32/little, RoleID:64/little,Packet/binary>>,
     PackSize1 = byte_size(Packet1) + 2,
     <<PackSize1:16/little, Packet1/binary>>.
 
-
-
-    
   
 decode_server_proto(Packet) ->
     Contents = splite_packet(Packet, 2, []),

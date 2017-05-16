@@ -48,10 +48,8 @@ deal_one_req({GateSeqID, ServerSeqID, CmdList}) ->
             gate_tcp:send_to_client(GateSeqID, ClientPacket)
     end.
     
-
 game_server_register(GateSeqID, CmdList) ->
     [{ProtoNumb, Content}|_]=proto_util:decode_cmd_proto(CmdList),  
-    io:format("ProtoNumb is ~p~n", [ProtoNumb]),
     case ProtoNumb of
         ?GAME_SERVER_REGISTER ->
             
@@ -66,7 +64,6 @@ game_server_register(GateSeqID, CmdList) ->
         _ ->
             ok
     end.
-
 
 send(Packet) ->
     Socket = get(socket),

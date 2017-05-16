@@ -15,53 +15,47 @@ start_link(Ref, Socket, Transport, Opts) ->
 
 init(Ref, Socket, Transport, _Opts = []) ->
     put(socket, Socket),
-    put(transport, Transport),
     ok = ranch:accept_ack(Ref),
     main_socket_loop(Socket, Transport).
 
+
+%internal fun
 main_socket_loop(Socket, Transport) ->
-    case Transport:recv(Socket, 0, 5000000) of
+    case Transport:recv_packet(Socket, 4) of
         {ok, Data} ->
-            io:format("Data is ~p~n", [Data]),
            deal_req(Data),
            main_socket_loop(Socket, Transport);
-        _ ->
+        Msg ->
+           lager:error("rerv un expect msg ~p", [Msg]),
            ProtoNum =?USER_LOGOUT_REQ,
            Content = <<0>>,
            Packet = proto_util:pack_cmd_proto(ProtoNum, Content),
-           ServerPacket = proto_util:pack_server_proto(Packet),
+           Seq = get(seq),
+           ServerPacket = proto_util:pack_server_proto(Seq, Packet),
            send_server(ServerPacket),
            gen_tcp:close(Socket)
     end.
 
 
+
 deal_req(Data) ->
-    {_Size, Rest} = decode_head(Data),
-    io:format("Rest is ~p~n", [Rest]),
-    deal_msgs(Rest).
+    case get(seq) of
+        undefined ->
+            deal_client_register(Data);
+        Seq ->
+            SocketPacket = proto_util:pack_server_proto(Seq, Data),
+            Socket = get(server_socket),
+            gen_tcp:send(Socket, SocketPacket)
+    end.
    
-deal_msgs(<<Size:16/little, ProtoNumb:16/little,  Rest/binary>>) ->
-    Size1 = Size - 4,
-    <<Content:Size1/binary, Left/binary>> =  Rest,
-    Size2 = Size1 -1,
-    case Content of
-        <<Content1:Size2/binary, _End/binary>> ->
-            Content1;
-        <<Content1:Size1/binary, _End/binary>> ->
-            Content1
-    end,
-    deal_msg(ProtoNumb, Content1),
-    ServerContent = <<Size:16/little, ProtoNumb:16/little,Content/binary>>,
-    deal_server_packet(ServerContent),
-    deal_msgs(Left);
-deal_msgs(_) ->
-    ok.
  
 
-deal_msg(ProtoNumb, Content) ->
+deal_client_register(Data) ->
+    [{ProtoNumb, Content}|_]=proto_util:decode_cmd_proto(Data),  
     case ProtoNumb of
         ?SERVER_ID_SYN_REQ ->
-            ServerID = binary_to_integer(Content),
+            [ServerIDStr|_Rest] = binary:split(Content, <<0>>),
+            ServerID = binary_to_integer(ServerIDStr),
             put(server_id, ServerID),
             case ets:lookup(ets_server_map, ServerID) of
                [{_, Socket}] ->
@@ -86,30 +80,15 @@ deal_msg(ProtoNumb, Content) ->
     end.
 
 
-    
-
-decode_head(<<Size:16/little, _None:16, Rest/binary>>) ->
-    {Size, Rest}.
 
 send_client(Packet) ->
     Socket = get(socket),
-    Transport = get(transport),
-    Transport:send(Socket, Packet).
-
-deal_server_packet(Packet) ->
-    Seq = get(seq),
-    case catch proto_util:pack_server_proto(Seq, Packet) of
-        Packet1 when is_binary(Packet1) ->
-            send_server(Packet1);
-        O ->
-            io:format("client pack server packet ~p failed ,reason ~p~n", [Packet, O])
-    end.
+    gen_tcp:send(Socket, Packet).
 
 send_server(Packet) ->
     case get(server_socket) of
         undefined ->
             ok;
         Socket ->
-            Transport = get(transport),
-            Transport:send(Socket, Packet)
+            gen_tcp:send(Socket, Packet)
     end.
