@@ -1,0 +1,14 @@
+-define(GAME_SERVER_ACTIVE_REQ,16#000E).%% 游戏服务器端定时激活连接
+-define(GAME_CLIENT_ACTIVE_REQ,16#7600).%% 游戏客户端定时激活连接
+-define(PRESS_REQ,16#1000). %% 压测消息
+-define(PRESS_RESQ,16#1001). %% 压测消息
+-define(USER_LOGIN_REQ,16#6000). %% 游戏客户端用户登录请求
+-define(USER_LOGIN_RESP,16#6001). %% 游戏客户端用户登录应答
+-define(USER_CREATE_ROLE_REQ,16#6050). %% 游戏客户端创建角色
+-define(SERVER_ID_SYN_REQ,16#5000).%% 客户端请求的区服id同步
+-define(SERVER_ID_SYN_RESP,16#5001).%% 客户端请求的区服id同步
+-define(USER_LOGOUT_REQ,16#5FFF).%% 游客客户端注销请求
+-define(USER_LOGOUT_RESP,16#5FFE).%% 游客客户端注销请求
+-define(GAME_SERVER_SHUTDOWN,16#5FFD).%% 游戏服务器已关闭，发给客户端
+-define(GAME_SERVER_REGISTER,16#5FFC).%% 游戏服务器注册
+-define(GAME_SERVER_KICK,16#5100).%% 游戏服务器踢人

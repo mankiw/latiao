@@ -25,6 +25,7 @@
 -export([connect/3]).
 -export([connect/4]).
 -export([recv/3]).
+-export([recv_packet/2]).
 -export([send/2]).
 -export([sendfile/2]).
 -export([sendfile/4]).
@@ -35,6 +36,9 @@
 -export([sockname/1]).
 -export([shutdown/2]).
 -export([close/1]).
+
+
+-export([send_to_client/2]).
 
 -type opt() :: {backlog, non_neg_integer()}
 	| {buffer, non_neg_integer()}
@@ -123,9 +127,48 @@ connect(Host, Port, Opts, Timeout) when is_integer(Port) ->
 recv(Socket, Length, Timeout) ->
 	gen_tcp:recv(Socket, Length, Timeout).
 
+recv_packet(Socket, Packet) ->
+    case gen_tcp:recv(Socket, Packet, 500000) of
+        {ok, Data} ->
+            BitSzie = Packet * 8,
+            <<Length:BitSzie/little,Rest/binary>> =  Data, 
+            Length1 = Length - Packet,
+            case byte_size(Rest) == Length1 of
+                true ->
+                    {ok, Rest};
+                _ ->
+                    recv_packet(Socket, Length1, Rest)
+            end;
+        O ->
+            O
+    end.
+
+recv_packet(Socket, Length, Acc) ->
+    case gen_tcp:recv(Socket, Length, 500000) of
+        {ok, Data} ->
+            Acc1 = <<Data/binary, Acc/binary>>,
+            case byte_size(Acc1) == Length of
+                true ->
+                    {ok, Acc1};
+                _ ->
+                    lager:info("Length is ~p, now is ~p", [Length, byte_size(Acc1)]),
+                    recv_packet(Socket, Length, Acc1)
+            end;
+        O ->
+            O
+    end.
+
 -spec send(inet:socket(), iodata()) -> ok | {error, atom()}.
 send(Socket, Packet) ->
 	gen_tcp:send(Socket, Packet).
+
+send_to_client(SeqID, Packet) ->
+    case catch ets:lookup_element(ets_client_map, SeqID, 2) of
+        Socket when is_port(Socket) ->
+            gen_tcp:send(Socket, Packet);
+        _ ->
+            lager:warn("try send packet to ~p, but socket not exit", [SeqID])
+    end.
 
 -spec sendfile(inet:socket(), file:name_all() | file:fd())
 	-> {ok, non_neg_integer()} | {error, atom()}.

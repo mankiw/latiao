@@ -15,13 +15,8 @@
 %%====================================================================
 
 start(_StartType, _StartArgs) ->
-    Port = config:get_listen_client_port(),
-    proc_lib:spawn(safe_protocol, start, []),
-    lager:info("start gate server start port ~p", [Port]),
-    {ok, _} = ranch:start_listener(gate_way, 100,
-        gate_tcp, [{port, Port}],
-        gate_protocol, []
-        ).
+    gate_way_sup:start_link().
+  
 
 %%--------------------------------------------------------------------
 stop(_State) ->
