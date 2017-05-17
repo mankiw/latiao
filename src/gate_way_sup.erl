@@ -43,21 +43,21 @@ init([]) ->
 %%====================================================================
 start_client_tcp_logic_pool() ->
     Port = config:get_listen_client_port(),
-    {ok, _} = ranch:start_listener(client_gate_way, 100,
-        gate_tcp, [{port, Port}],
+    {ok, _} = ranch:start_listener(client_gate_way, 10,
+        gate_tcp, [{port, Port}, {max_connections, 100*10000}],
         gate_client_protocol, []
         ).
 
 start_client_tcp_safe_pool() ->
     Port = 843,
-    {ok, _} = ranch:start_listener(client_safe_gate_way, 100,
-        gate_tcp, [{port, Port}],
+    {ok, _} = ranch:start_listener(client_safe_gate_way, 10,
+        gate_tcp, [{port, Port}, {max_connections, 100*10000}],
         gate_client_safe_protocol, []
         ).
 
 start_server_tcp_logic_pool() ->
     Port = config:get_listen_server_port(),
-    {ok, _} = ranch:start_listener(server_gate_way,  10,
+    {ok, _} = ranch:start_listener(server_gate_way,  5,
         gate_tcp, [{port, Port}],
         gate_server_protocol, []
         ).

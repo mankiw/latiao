@@ -151,7 +151,6 @@ recv_packet(Socket, Length, Acc) ->
                 true ->
                     {ok, Acc1};
                 _ ->
-                    lager:info("Length is ~p, now is ~p", [Length, byte_size(Acc1)]),
                     recv_packet(Socket, Length, Acc1)
             end;
         O ->

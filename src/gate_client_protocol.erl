@@ -25,17 +25,18 @@ main_socket_loop(Socket, Transport) ->
         {ok, Data} ->
            deal_req(Data),
            main_socket_loop(Socket, Transport);
-        Msg ->
-           lager:error("rerv un expect msg ~p", [Msg]),
-           ProtoNum =?USER_LOGOUT_REQ,
-           Content = <<0>>,
-           Packet = proto_util:pack_cmd_proto(ProtoNum, Content),
-           Seq = get(seq),
-           ServerPacket = proto_util:pack_server_proto(Seq, Packet),
-           send_server(ServerPacket),
+        _Msg ->
+           catch send_logout_to_server(),
            gen_tcp:close(Socket)
     end.
 
+send_logout_to_server() ->
+   ProtoNum =?USER_LOGOUT_REQ,
+   Content = <<0>>,
+   Packet = proto_util:pack_cmd_proto(ProtoNum, Content),
+   Seq = get(seq),
+   ServerPacket = proto_util:pack_server_proto(Seq, Packet),
+   send_server(ServerPacket).
 
 
 deal_req(Data) ->
@@ -61,6 +62,8 @@ deal_client_register(Data) ->
                [{_, Socket}] ->
                     put(server_socket, Socket),
                     Seq = proto_util:get_seq(),
+                    Name = "client_" ++ integer_to_list(Seq),
+                    register(list_to_atom(Name), self()),
                     put(seq, Seq),
                     ets:insert(ets_client_map, {Seq, get(socket), 0}),
                     ProtoNumbReply = ?SERVER_ID_SYN_RESP,
@@ -76,6 +79,18 @@ deal_client_register(Data) ->
                     send_client(ClientPack)
             end;
         _ ->
+            Seq = proto_util:get_seq(),
+            put(seq, Seq),
+            SocketPacket = proto_util:pack_server_proto(Seq, Data),
+            ets:insert(ets_client_map, {Seq, get(socket), 0}),
+            case get(server_socket) of
+                undefined ->
+                    [{_,Socket}|_] = ets:tab2list(ets_server_map),
+                    put(server_socket, Socket);
+                Socket ->
+                    ok
+            end,
+            gen_tcp:send(Socket, SocketPacket),
             ok
     end.
 

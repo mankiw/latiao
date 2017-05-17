@@ -52,9 +52,10 @@ game_server_register(GateSeqID, CmdList) ->
     [{ProtoNumb, Content}|_]=proto_util:decode_cmd_proto(CmdList),  
     case ProtoNumb of
         ?GAME_SERVER_REGISTER ->
-            
             <<ServerID:16/little,_/binary>> = Content,
             put(server_id, ServerID),
+            Name = "server_" ++ integer_to_list(ServerID),
+            register(list_to_atom(Name), self()),
             ets:insert(ets_server_map, {ServerID, get(socket)}),
             ProtoNumbReply = ?GAME_SERVER_REGISTER,
             Result0 = <<10000:32/little>>,
