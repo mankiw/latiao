@@ -16,6 +16,7 @@ start_link(Ref, Socket, Transport, Opts) ->
 init(Ref, Socket, Transport, _Opts = []) ->
     put(socket, Socket),
     ok = ranch:accept_ack(Ref),
+    lager:info("new connect"),
     main_socket_loop(Socket, Transport).
 
 
@@ -63,6 +64,7 @@ deal_client_register(Data) ->
                     put(server_socket, Socket),
                     Seq = proto_util:get_seq(),
                     Name = "client_" ++ integer_to_list(Seq),
+                    lager:info("client ~p, sync server ~p~n", [Seq, ServerID]),
                     register(list_to_atom(Name), self()),
                     put(seq, Seq),
                     ets:insert(ets_client_map, {Seq, get(socket), 0}),

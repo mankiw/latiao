@@ -7,7 +7,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([start/0]).
+-export([start/0, stop/0]).
 
 start() ->
     ok = application:start(crypto),
@@ -19,8 +19,17 @@ start() ->
     ok = application:start(ranch),
     ok = application:start(gate_way).
   
-
-
+stop() ->
+  application:stop(ranch),
+  application:stop(gate_way),
+  application:stop(ssl),
+  application:stop(inets),
+  application:stop(public_key),
+  application:stop(asn1),
+  application:stop(crypto),
+  lager:info("server system stopped"),
+  application:stop(lager),
+  erlang:halt().
 %% ====================================================================
 %% Internal functions
 %% ====================================================================

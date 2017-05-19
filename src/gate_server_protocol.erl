@@ -27,6 +27,8 @@ main_socket_loop(Socket, Transport) ->
            main_socket_loop(Socket, Transport);
         Msg ->
            lager:error("rerv un expect msg ~p", [Msg]),
+           ServerId = get(server_id),
+           ets:delete(ets_server_map, ServerId),
            gen_tcp:close(Socket)
     end.
 
@@ -45,7 +47,7 @@ deal_one_req({GateSeqID, ServerSeqID, CmdList}) ->
         _ ->
             ets:update_element(ets_client_map, GateSeqID, {3, ServerSeqID}),
             ClientPacket = proto_util:pack_client_proto(CmdList),
-            gate_tcp:send_to_client(GateSeqID, ClientPacket)
+            gate_tcp:send_to_client(GateSeqID, ClientPacket) 
     end.
     
 game_server_register(GateSeqID, CmdList) ->
@@ -53,7 +55,8 @@ game_server_register(GateSeqID, CmdList) ->
     case ProtoNumb of
         ?GAME_SERVER_REGISTER ->
             <<ServerID:16/little,_/binary>> = Content,
-            put(server_id, ServerID),
+            lager:info("server ~p register ", [ServerID]),
+            put(server_id, ServerID), 
             Name = "server_" ++ integer_to_list(ServerID),
             register(list_to_atom(Name), self()),
             ets:insert(ets_server_map, {ServerID, get(socket)}),
