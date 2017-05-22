@@ -36,18 +36,22 @@ deal_req(<<>>) ->
     ok;
 deal_req(Data) ->
     Reqs = proto_util:decode_server_proto(Data),
-    [deal_one_req(Req)||Req<-Reqs].
+    CMDs = [deal_one_req(Req)||Req<-Reqs],
+    [{GateSeqID, _}|_] = CMDs,
+    CMDs1 = [CMD||{_, CMD}<-CMDs, CMD /= skip],
+    ClientPacket = proto_util:pack_client_proto(CMDs1),
+    gate_tcp:send_to_client(GateSeqID, ClientPacket).
     
    
 
 deal_one_req({GateSeqID, ServerSeqID, CmdList}) ->
     case GateSeqID of
         0 ->
-            game_server_register(GateSeqID, CmdList);
+            game_server_register(GateSeqID, CmdList),
+            {GateSeqID, skip};
         _ ->
             ets:update_element(ets_client_map, GateSeqID, {3, ServerSeqID}),
-            ClientPacket = proto_util:pack_client_proto(CmdList),
-            gate_tcp:send_to_client(GateSeqID, ClientPacket) 
+            {GateSeqID, CmdList}
     end.
     
 game_server_register(GateSeqID, CmdList) ->

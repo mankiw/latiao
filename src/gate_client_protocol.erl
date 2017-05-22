@@ -16,9 +16,20 @@ start_link(Ref, Socket, Transport, Opts) ->
 init(Ref, Socket, Transport, _Opts = []) ->
     put(socket, Socket),
     ok = ranch:accept_ack(Ref),
-    lager:info("new connect"),
+    IP = socket_ip_str(Socket),
+    put(ip, IP),
+    %lager:info("new connect ip ~p", [IP]),
     main_socket_loop(Socket, Transport).
 
+socket_ip_str(Socket) ->
+  case inet:peername(Socket) of
+    {ok, {IP, _Port}} ->
+      case inet:ntoa(IP) of
+        {error, einval} -> undefined;
+        Addr -> Addr
+      end;
+    {error, _} -> undefined
+  end.
 
 %internal fun
 main_socket_loop(Socket, Transport) ->
@@ -27,6 +38,7 @@ main_socket_loop(Socket, Transport) ->
            deal_req(Data),
            main_socket_loop(Socket, Transport);
         _Msg ->
+           % lager:info("rev unexpect msg1 ~p, ip ~p", [Msg, get(ip)]),
            catch send_logout_to_server(),
            gen_tcp:close(Socket)
     end.
@@ -47,7 +59,13 @@ deal_req(Data) ->
         Seq ->
             SocketPacket = proto_util:pack_server_proto(Seq, Data),
             Socket = get(server_socket),
-            gen_tcp:send(Socket, SocketPacket)
+            case gen_tcp:send(Socket, SocketPacket) of
+                ok ->
+                    ok;
+                _ ->
+                    lager:error("server close!"),
+                    gen_tcp:close(get(socket))
+            end
     end.
    
  
@@ -64,7 +82,7 @@ deal_client_register(Data) ->
                     put(server_socket, Socket),
                     Seq = proto_util:get_seq(),
                     Name = "client_" ++ integer_to_list(Seq),
-                    lager:info("client ~p, sync server ~p~n", [Seq, ServerID]),
+                   %lager:info("client ~p, sync server ~p, ip ~p~n", [Seq, ServerID, get(ip)]),
                     register(list_to_atom(Name), self()),
                     put(seq, Seq),
                     ets:insert(ets_client_map, {Seq, get(socket), 0}),
@@ -80,19 +98,8 @@ deal_client_register(Data) ->
                     ClientPack = proto_util:pack_client_proto(Result1),
                     send_client(ClientPack)
             end;
-        _ ->
-            Seq = proto_util:get_seq(),
-            put(seq, Seq),
-            SocketPacket = proto_util:pack_server_proto(Seq, Data),
-            ets:insert(ets_client_map, {Seq, get(socket), 0}),
-            case get(server_socket) of
-                undefined ->
-                    [{_,Socket}|_] = ets:tab2list(ets_server_map),
-                    put(server_socket, Socket);
-                Socket ->
-                    ok
-            end,
-            gen_tcp:send(Socket, SocketPacket),
+        Msg ->
+            lager:error("recv unexpect msg ~p, ip ~p", [Msg, get(ip)]),
             ok
     end.
 

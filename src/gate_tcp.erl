@@ -128,7 +128,7 @@ recv(Socket, Length, Timeout) ->
 	gen_tcp:recv(Socket, Length, Timeout).
 
 recv_packet(Socket, Packet) ->
-    case gen_tcp:recv(Socket, Packet, 500000) of
+    case gen_tcp:recv(Socket, Packet, 9000000) of
         {ok, Data} ->
             BitSzie = Packet * 8,
             <<Length:BitSzie/little,Rest/binary>> =  Data, 
