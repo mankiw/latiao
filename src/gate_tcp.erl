@@ -166,7 +166,7 @@ send_to_client(SeqID, Packet) ->
         Socket when is_port(Socket) ->
             gen_tcp:send(Socket, Packet);
         _ ->
-            lager:warn("try send packet to ~p, but socket not exit", [SeqID])
+            lager:info("try send packet to ~p, but socket not exit", [SeqID])
     end.
 
 -spec sendfile(inet:socket(), file:name_all() | file:fd())

@@ -41,6 +41,8 @@ decode_server_proto(Packet) ->
         end,
     lists:map(Fun, Contents).
 
+pack_client_proto([]) ->
+    <<>>;
 pack_client_proto(Content) ->
     ByteSize = byte_size(Content) + 4,
     <<ByteSize:16/little,0:16,Content/binary>>.

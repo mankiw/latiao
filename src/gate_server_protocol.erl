@@ -36,22 +36,27 @@ deal_req(<<>>) ->
     ok;
 deal_req(Data) ->
     Reqs = proto_util:decode_server_proto(Data),
-    CMDs = [deal_one_req(Req)||Req<-Reqs],
-    [{GateSeqID, _}|_] = CMDs,
-    CMDs1 = [CMD||{_, CMD}<-CMDs, CMD /= skip],
-    ClientPacket = proto_util:pack_client_proto(CMDs1),
-    gate_tcp:send_to_client(GateSeqID, ClientPacket).
+    Reqs1 = lists:reverse(Reqs),
+    [deal_one_req(Req)||Req<-Reqs1].
     
    
 
 deal_one_req({GateSeqID, ServerSeqID, CmdList}) ->
     case GateSeqID of
         0 ->
-            game_server_register(GateSeqID, CmdList),
-            {GateSeqID, skip};
+            game_server_register(GateSeqID, CmdList);
         _ ->
+            Plist=proto_util:decode_cmd_proto(CmdList),
+            Fun =
+                fun({24577, _}) ->
+                        lager:error("P is ~p, send to ~p ~n", [24577, GateSeqID]);
+                   (_ )->
+                        ok
+                end,
+            lists:foreach(Fun, Plist),
             ets:update_element(ets_client_map, GateSeqID, {3, ServerSeqID}),
-            {GateSeqID, CmdList}
+            ClientPacket = proto_util:pack_client_proto(CmdList),
+            gate_tcp:send_to_client(GateSeqID, ClientPacket) 
     end.
     
 game_server_register(GateSeqID, CmdList) ->
